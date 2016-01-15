@@ -1,5 +1,14 @@
 package org.codehaus.mojo.webstart.generator;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.maven.plugin.logging.SystemStreamLog;
+import org.apache.maven.plugin.testing.stubs.ArtifactStub;
+import org.apache.maven.project.MavenProject;
+import org.codehaus.mojo.webstart.ResolvedJarResource;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -21,15 +30,6 @@ package org.codehaus.mojo.webstart.generator;
 
 import junit.framework.Assert;
 import junit.framework.TestCase;
-
-import org.apache.maven.plugin.logging.SystemStreamLog;
-import org.apache.maven.plugin.testing.stubs.ArtifactStub;
-import org.apache.maven.project.MavenProject;
-import org.codehaus.mojo.webstart.ResolvedJarResource;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Tests the {@link JarResourcesGenerator} class.
@@ -61,7 +61,7 @@ public class JarResourcesGeneratorTest
             new GeneratorTechnicalConfig( mavenProject, resourceLoaderPath, "default-jnlp-template.vm",
                                           outputFile, templateFile.getName(), mainClass,
                                           "jar:file:/tmp/path/to/webstart-plugin.jar", "utf-8" );
-        JarResourceGeneratorConfig jarResourceGeneratorConfig = new JarResourceGeneratorConfig( jarResources, null, null, null );
+        JarResourceGeneratorConfig jarResourceGeneratorConfig = new JarResourceGeneratorConfig( jarResources, null, null, null,false);
         JarResourcesGenerator generator  =
             new JarResourcesGenerator( new SystemStreamLog(), generatorTechnicalConfig, jarResourceGeneratorConfig );
 
@@ -92,7 +92,7 @@ public class JarResourcesGeneratorTest
 
         Assert.assertEquals( expectedText, actualText );
 
-        JarResourceGeneratorConfig jarResourceGeneratorConfig2 = new JarResourceGeneratorConfig( jarResources, "myLib", null, null );
+        JarResourceGeneratorConfig jarResourceGeneratorConfig2 = new JarResourceGeneratorConfig( jarResources, "myLib", null, null,false );
         JarResourcesGenerator generator2  =
             new JarResourcesGenerator( new SystemStreamLog(), generatorTechnicalConfig, jarResourceGeneratorConfig2 );
 
@@ -121,7 +121,8 @@ public class JarResourcesGeneratorTest
             /**
              * {@inheritDoc}
              */
-            public String getHrefValue()
+            @Override
+			public String getHrefValue()
             {
                 return hrefValue;
             }
@@ -129,7 +130,8 @@ public class JarResourcesGeneratorTest
             /**
              * {@inheritDoc}
              */
-            public String getMainClass()
+            @Override
+			public String getMainClass()
             {
                 return mainClass;
             }
@@ -137,7 +139,8 @@ public class JarResourcesGeneratorTest
             /**
              * {@inheritDoc}
              */
-            public String getVersion()
+            @Override
+			public String getVersion()
             {
                 return version;
             }
@@ -145,7 +148,8 @@ public class JarResourcesGeneratorTest
             /**
              * {@inheritDoc}
              */
-            public boolean isIncludeInJnlp()
+            @Override
+			public boolean isIncludeInJnlp()
             {
                 return includeInJnlp;
             }
@@ -153,7 +157,8 @@ public class JarResourcesGeneratorTest
             /**
              * {@inheritDoc}
              */
-            public boolean isOutputJarVersion()
+            @Override
+			public boolean isOutputJarVersion()
             {
                 return outputJarVersion;
             }

@@ -1,5 +1,15 @@
 package org.codehaus.mojo.webstart;
 
+import java.io.File;
+import java.io.FileFilter;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -30,21 +40,12 @@ import org.apache.maven.project.MavenProject;
 import org.codehaus.mojo.webstart.dependency.filenaming.DependencyFilenameStrategy;
 import org.codehaus.mojo.webstart.pack200.Pack200Config;
 import org.codehaus.mojo.webstart.pack200.Pack200Tool;
+import org.codehaus.mojo.webstart.sign.JarSigner;
 import org.codehaus.mojo.webstart.sign.SignConfig;
 import org.codehaus.mojo.webstart.sign.SignTool;
 import org.codehaus.mojo.webstart.util.ArtifactUtil;
 import org.codehaus.mojo.webstart.util.IOUtil;
 import org.codehaus.mojo.webstart.util.JarUtil;
-
-import java.io.File;
-import java.io.FileFilter;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 /**
  * The superclass for all JNLP generating MOJOs.
@@ -66,7 +67,7 @@ public abstract class AbstractBaseJnlpMojo
     /**
      * unprocessed files (that will be signed) are prefixed with this
      */
-    private static final String UNPROCESSED_PREFIX = "unprocessed_";
+    public static final String UNPROCESSED_PREFIX = "unprocessed_";
 
     /**
      * Suffix extension of a jar file.
@@ -288,6 +289,9 @@ public abstract class AbstractBaseJnlpMojo
      */
     @Component( role = DependencyFilenameStrategy.class )
     private Map<String, DependencyFilenameStrategy> dependencyFilenameStrategyMap;
+    
+    @Component
+    private JarSigner concurrentJarSigner;
 
     // ----------------------------------------------------------------------
     // Fields
@@ -877,28 +881,8 @@ public abstract class AbstractBaseJnlpMojo
         }
 
         boolean signVerify = sign.isVerify();
-
-        for ( File unprocessedJarFile : jarFiles )
-        {
-
-            File signedJar = toProcessFile( unprocessedJarFile );
-            ioUtil.deleteFile( signedJar );
-
-            verboseLog( "Sign " + signedJar.getName() );
-            signTool.sign( sign, unprocessedJarFile, signedJar );
-
-            getLog().debug( "lastModified signedJar:" + signedJar.lastModified() + " unprocessed signed Jar:" +
-                                unprocessedJarFile.lastModified() );
-
-            if ( signVerify )
-            {
-                verboseLog( "Verify signature of " + signedJar.getName() );
-                signTool.verify( sign, signedJar, isVerbose() );
-            }
-            // remove unprocessed files
-            // TODO wouldn't have to do that if we copied the unprocessed jar files in a temporary area
-            ioUtil.deleteFile( unprocessedJarFile );
-        }
+        
+        this.concurrentJarSigner.execute(jarFiles, sign, getLog(), signVerify);
 
         return jarFiles.length;
     }

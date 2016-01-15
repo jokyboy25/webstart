@@ -1,5 +1,9 @@
 package org.codehaus.mojo.webstart.util;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -25,10 +29,6 @@ import org.apache.maven.artifact.resolver.filter.ArtifactFilter;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.mojo.webstart.JarResource;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Some usefull methods on artifacts.
@@ -62,6 +62,8 @@ public interface ArtifactUtil
      * @return the created artifact from the given jar resource
      */
     Artifact createArtifact( JarResource jarResource );
+    
+    public Artifact createArtifactPom( JarResource jarResource );
 
     MavenProject resolveFromReactor( Artifact artifact, MavenProject mavenProject, List<MavenProject> reactorProjects )
         throws MojoExecutionException;

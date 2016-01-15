@@ -1,5 +1,8 @@
 package org.codehaus.mojo.webstart.generator;
 
+import java.util.Collection;
+import java.util.Map;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -21,9 +24,6 @@ package org.codehaus.mojo.webstart.generator;
 
 import org.codehaus.mojo.webstart.ResolvedJarResource;
 
-import java.util.Collection;
-import java.util.Map;
-
 /**
  * Created on 1/6/14.
  *
@@ -39,16 +39,19 @@ public class JarResourceGeneratorConfig
     private final String libPath;
 
     private final String codebase;
+    
+    private boolean signing;
 
     private final Map<String, String> properties;
 
     public JarResourceGeneratorConfig( Collection<ResolvedJarResource> jarResources, String libPath, String codebase,
-                                       Map<String, String> properties )
+                                       Map<String, String> properties, boolean signing)
     {
         this.jarResources = jarResources;
         this.libPath = libPath;
         this.codebase = codebase;
         this.properties = properties;
+        this.signing = signing;
     }
 
     public Collection<ResolvedJarResource> getJarResources()
@@ -108,4 +111,8 @@ public class JarResourceGeneratorConfig
     {
         return properties;
     }
+    
+    public boolean isSigning() {
+		return signing;
+	}
 }

@@ -1,5 +1,22 @@
 package org.codehaus.mojo.webstart;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -33,19 +50,24 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.project.MavenProjectBuilder;
+import org.apache.maven.project.ProjectBuildingException;
+import org.apache.maven.shared.dependency.graph.DependencyGraphBuilder;
+import org.apache.maven.shared.dependency.graph.DependencyGraphBuilderException;
+import org.apache.maven.shared.dependency.graph.DependencyNode;
+import org.apache.maven.shared.dependency.graph.filter.AncestorOrSelfDependencyNodeFilter;
+import org.apache.maven.shared.dependency.graph.filter.ArtifactDependencyNodeFilter;
+import org.apache.maven.shared.dependency.graph.filter.DependencyNodeFilter;
+import org.apache.maven.shared.dependency.graph.traversal.BuildingDependencyNodeVisitor;
+import org.apache.maven.shared.dependency.graph.traversal.CollectingDependencyNodeVisitor;
+import org.apache.maven.shared.dependency.graph.traversal.DependencyNodeVisitor;
+import org.apache.maven.shared.dependency.graph.traversal.FilteringDependencyNodeVisitor;
 import org.codehaus.mojo.webstart.generator.GeneratorTechnicalConfig;
 import org.codehaus.mojo.webstart.generator.JarResourceGeneratorConfig;
 import org.codehaus.mojo.webstart.generator.JarResourcesGenerator;
 import org.codehaus.mojo.webstart.generator.VersionXmlGenerator;
 import org.codehaus.mojo.webstart.util.ArtifactUtil;
 import org.codehaus.mojo.webstart.util.IOUtil;
-
-import java.io.File;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
 
 /**
  * MOJO is tailored for use within a Maven web application project that uses
@@ -74,6 +96,8 @@ public class JnlpDownloadServletMojo
      * Name of the default jnlp extension template to use if user define it in the default template directory.
      */
     private static final String SERVLET_TEMPLATE_FILENAME = "servlet-template.vm";
+    
+    private static final String JNLP_FILE_NAME_IN_JAR = "JNLP-INF/APPLICATION_TEMPLATE.JNLP";
 
     // ----------------------------------------------------------------------
     // Mojo Parameters
@@ -118,6 +142,12 @@ public class JnlpDownloadServletMojo
      */
     @Component
     private MavenProject project;
+    
+    @Component
+    protected MavenProjectBuilder mavenProjectBuilder;
+    
+    @Component
+    private DependencyGraphBuilder dependencyGraphBuilder;
 
     // ----------------------------------------------------------------------
     // Mojo Implementation
@@ -158,7 +188,7 @@ public class JnlpDownloadServletMojo
         }
         else
         {
-            resolvedCommonJarResources = resolveJarResources( commonJarResources, null );
+            resolvedCommonJarResources = resolveJarResources( commonJarResources, null, "" );
         }
 
         Set<ResolvedJarResource> allResolvedJarResources = new LinkedHashSet<ResolvedJarResource>();
@@ -169,7 +199,6 @@ public class JnlpDownloadServletMojo
         // ---
 
         getLog().info( "-- Prepare jnlp files" );
-        Set<ResolvedJnlpFile> resolvedJnlpFiles = new LinkedHashSet<ResolvedJnlpFile>();
 
         for ( JnlpFile jnlpFile : jnlpFiles )
         {
@@ -177,14 +206,51 @@ public class JnlpDownloadServletMojo
 
             // resolve jar resources of the jnpl file
             Set<ResolvedJarResource> resolvedJarResources =
-                resolveJarResources( jnlpFile.getJarResources(), resolvedCommonJarResources );
+                resolveJarResources( jnlpFile.getJarResources(), resolvedCommonJarResources , jnlpFile.getMainClass());
 
             // keep them (to generate the versions.xml file)
             allResolvedJarResources.addAll( resolvedJarResources );
 
             // create the resolved jnlp file
             ResolvedJnlpFile resolvedJnlpFile = new ResolvedJnlpFile( jnlpFile, resolvedJarResources );
-            resolvedJnlpFiles.add( resolvedJnlpFile );
+File jnlpGeneratedFile = generateJnlpFile( resolvedJnlpFile, getLibPath(), false);
+            
+            if(jnlpFile.isSignJnlp()){
+            	Artifact artifactWithMainClass = null;
+            	for(ResolvedJarResource resolvedJarResource: resolvedJarResources){
+            		if(resolvedJarResource.getMainClass()  != null){
+            			artifactWithMainClass = resolvedJarResource.getArtifact();
+            			getLog().info("Find mainArtifactJar:" + artifactWithMainClass.getId());
+            			break;
+            		}
+            	}
+            	if(artifactWithMainClass != null){
+	            	File[] libFiles = getLibDirectory().listFiles();
+	            	File mainJarFile = null;
+	            	for(int i=0; i<libFiles.length; i++){
+	            		File lib = libFiles[i];
+	            		if(lib.getName().equals("unprocessed_"+ artifactWithMainClass.getFile().getName())){
+	            			mainJarFile = lib;
+	            			getLog().info("Find mainJarFile in " + lib.getAbsoluteFile());
+	            			break;
+	            		}
+	            	}
+	            	if(mainJarFile != null){
+	            		try{
+	            			File jnlpSigningFile = generateJnlpFile( resolvedJnlpFile, getLibPath(), true );
+	            			addJNLPinMainJar(mainJarFile, jnlpSigningFile);
+	            			jnlpSigningFile.delete();
+	            		}catch(IOException exception){
+	            			throw new MojoExecutionException( "Failure to add JNLP file in Main artifact: ", exception );
+	            		}
+	            	}
+            	}else{
+            		throw new MojoExecutionException( "The main artifact containing MainClass was unavailable");
+            	}
+            	
+            }
+            
+          
         }
 
         // ---
@@ -192,15 +258,6 @@ public class JnlpDownloadServletMojo
         // ---
 
         signOrRenameJars();
-
-        // ---
-        // Generate jnlp files
-        // ---
-
-        for ( ResolvedJnlpFile jnlpFile : resolvedJnlpFiles )
-        {
-            generateJnlpFile( jnlpFile, getLibPath() );
-        }
 
         // ---
         // Generate version xml file
@@ -226,7 +283,8 @@ public class JnlpDownloadServletMojo
     /**
      * {@inheritDoc}
      */
-    public MavenProject getProject()
+    @Override
+	public MavenProject getProject()
     {
         return project;
     }
@@ -434,11 +492,12 @@ public class JnlpDownloadServletMojo
      * @throws MojoExecutionException if something bas occurs while retrieving resources
      */
     private Set<ResolvedJarResource> resolveJarResources( Collection<JarResource> configuredJarResources,
-                                                          Set<ResolvedJarResource> commonJarResources )
+                                                          Set<ResolvedJarResource> commonJarResources, String mainClass )
         throws MojoExecutionException
     {
 
-        Set<ResolvedJarResource> collectedJarResources = new LinkedHashSet<ResolvedJarResource>();
+
+    	Set<ResolvedJarResource> collectedJarResources = new LinkedHashSet<ResolvedJarResource>();
 
         if ( commonJarResources != null )
         {
@@ -448,7 +507,7 @@ public class JnlpDownloadServletMojo
         ArtifactUtil artifactUtil = getArtifactUtil();
 
         // artifacts resolved from repositories
-        Set<Artifact> artifacts = new LinkedHashSet<Artifact>();
+        Set<Artifact> artifactsPoms = new LinkedHashSet<Artifact>();
 
         // sibling projects hit from a jar resources (need a special transitive resolution)
         Set<MavenProject> siblingProjects = new LinkedHashSet<MavenProject>();
@@ -458,20 +517,22 @@ public class JnlpDownloadServletMojo
         for ( JarResource jarResource : configuredJarResources )
         {
             Artifact artifact = artifactUtil.createArtifact( jarResource );
-
+            Artifact artifactPom = artifactUtil.createArtifactPom( jarResource );
             // first try to resolv from reactor
             MavenProject siblingProject = artifactUtil.resolveFromReactor( artifact, getProject(), reactorProjects );
             if ( siblingProject == null )
             {
                 // try to resolve from repositories
                 artifactUtil.resolveFromRepositories( artifact, getRemoteRepositories(), getLocalRepository() );
-                artifacts.add( artifact );
+                artifactUtil.resolveFromRepositories( artifactPom, getRemoteRepositories(), getLocalRepository() );
+                artifactsPoms.add( artifactPom );
             }
             else
             {
                 artifact = siblingProject.getArtifact();
                 siblingProjects.add( siblingProject );
-                artifacts.add( artifact );
+                artifactUtil.resolveFromRepositories( artifactPom, getRemoteRepositories(), getLocalRepository() );
+                artifactsPoms.add( artifactPom );
                 artifact.setResolved( true );
             }
 
@@ -502,34 +563,62 @@ public class JnlpDownloadServletMojo
 
         if ( !isExcludeTransitive() )
         {
+            
+            try {
+            	Set<Artifact> transitiveArtifacts = new HashSet<Artifact>();
+            	for(Artifact artifactPom : artifactsPoms){
+	            	// prepare artifact filter
+	            	AndArtifactFilter artifactFilter = new AndArtifactFilter();
+	            	// restricts to runtime and compile scope
+	            	artifactFilter.add( new ScopeArtifactFilter( Artifact.SCOPE_RUNTIME ) );
+	            	// restricts to not pom dependencies
+	            	//artifactFilter.add( new InversionArtifactFilter( new TypeArtifactFilter( "pom" ) ) );
+	
+	            	// get all transitive dependencies
+	
+	            	final MavenProject pomProject =
+	            			mavenProjectBuilder.buildFromRepository( artifactPom, getRemoteRepositories(),  getLocalRepository() );
+	
+	            	DependencyNode rootNode = dependencyGraphBuilder.buildDependencyGraph(pomProject,artifactFilter);
+	
+	            	CollectingDependencyNodeVisitor collectingVisitor = new CollectingDependencyNodeVisitor();
+	            	AndArtifactFilter artifactFilter2 = new AndArtifactFilter();
+	            	artifactFilter2.add( new ScopeArtifactFilter( Artifact.SCOPE_RUNTIME ) );
+	            	artifactFilter2.add( new InversionArtifactFilter( new TypeArtifactFilter( "pom" ) ) );
+	            	DependencyNodeVisitor firstPassVisitor = new FilteringDependencyNodeVisitor( collectingVisitor, new ArtifactDependencyNodeFilter( artifactFilter2 ) );
+	            	rootNode.accept( firstPassVisitor );
+	
+	            	CollectingDependencyNodeVisitor visitor2 = new CollectingDependencyNodeVisitor();
+	            	DependencyNodeVisitor visitor = new BuildingDependencyNodeVisitor(visitor2);
+	            	DependencyNodeFilter secondPassFilter = new AncestorOrSelfDependencyNodeFilter( collectingVisitor.getNodes() );
+	            	visitor = new FilteringDependencyNodeVisitor( visitor, secondPassFilter );
+	            	rootNode.accept(visitor);
+		            	
+	            	List<DependencyNode> nodes = collectingVisitor.getNodes();
+	            	for (DependencyNode dependencyNode : nodes) {
+	            		Artifact artifact = dependencyNode.getArtifact();
+	            		artifactUtil.resolveFromRepositories( artifact, getRemoteRepositories(), getLocalRepository() );
+	            		transitiveArtifacts.add(artifact);
+	            	}
+            	}
 
-            // prepare artifact filter
+            	for ( Artifact resolvedArtifact : transitiveArtifacts )
+            	{
+            		ResolvedJarResource newJarResource = new ResolvedJarResource( resolvedArtifact );
 
-            AndArtifactFilter artifactFilter = new AndArtifactFilter();
-            // restricts to runtime and compile scope
-            artifactFilter.add( new ScopeArtifactFilter( Artifact.SCOPE_RUNTIME ) );
-            // restricts to not pom dependencies
-            artifactFilter.add( new InversionArtifactFilter( new TypeArtifactFilter( "pom" ) ) );
-
-            // get all transitive dependencies
-
-            Set<Artifact> transitiveArtifacts =
-                getArtifactUtil().resolveTransitively( artifacts, siblingProjects, getProject().getArtifact(),
-                                                       getLocalRepository(), getRemoteRepositories(), artifactFilter, getProject().getManagedVersionMap());
-
-            // for each transitive dependency, wrap it in a JarResource and add it to the collection of
-            // existing jar resources (if not already in)
-            for ( Artifact resolvedArtifact : transitiveArtifacts )
-            {
-
-                ResolvedJarResource newJarResource = new ResolvedJarResource( resolvedArtifact );
-
-                if ( !collectedJarResources.contains( newJarResource ) )
-                {
-                    getLog().debug( "Add jarResource (transitive): " + newJarResource );
-                    collectedJarResources.add( newJarResource );
-                }
-            }
+            		if ( !collectedJarResources.contains( newJarResource ) )
+            		{
+            			getLog().debug( "Add jarResource (transitive): " + newJarResource );
+            			collectedJarResources.add( newJarResource );
+            		}
+            	}
+            } catch (ProjectBuildingException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
+    		} catch (DependencyGraphBuilderException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
         }
 
         // for each JarResource, copy its artifact to the lib directory if necessary
@@ -558,14 +647,21 @@ public class JnlpDownloadServletMojo
                                                                                      isUseUniqueVersions() );
             jarResource.setHrefValue( filename );
         }
+       
+
         return collectedJarResources;
     }
 
-    private void generateJnlpFile( ResolvedJnlpFile jnlpFile, String libPath )
+    private File generateJnlpFile( ResolvedJnlpFile jnlpFile, String libPath , boolean signing )
         throws MojoExecutionException
     {
 
-        File jnlpOutputFile = new File( getWorkDirectory(), jnlpFile.getOutputFilename() );
+    	String outputFileName = jnlpFile.getOutputFilename();
+    	if(signing){
+    		outputFileName += ".signing";
+    	}
+
+        File jnlpOutputFile = new File( getWorkDirectory(), outputFileName );
 
         Set<ResolvedJarResource> jarResources = jnlpFile.getJarResources();
 
@@ -625,7 +721,7 @@ public class JnlpDownloadServletMojo
             new GeneratorTechnicalConfig( getProject(), templateDirectory, BUILT_IN_SERVLET_TEMPLATE_FILENAME,
                                           jnlpOutputFile, templateFileName, jnlpFile.getMainClass(),
                                           getWebstartJarURLForVelocity(), getEncoding() );
-        JarResourceGeneratorConfig jarResourceGeneratorConfig = new JarResourceGeneratorConfig( jarResources, libPath, getCodebase(), jnlpFile.getProperties() );
+        JarResourceGeneratorConfig jarResourceGeneratorConfig = new JarResourceGeneratorConfig( jarResources, libPath, getCodebase(), jnlpFile.getProperties(), signing );
         JarResourcesGenerator jnlpGenerator =
             new JarResourcesGenerator( getLog(), generatorTechnicalConfig, jarResourceGeneratorConfig );
 
@@ -640,6 +736,8 @@ public class JnlpDownloadServletMojo
             throw new MojoExecutionException(
                 "The following error occurred attempting to generate " + "the JNLP deployment descriptor: " + e, e );
         }
+        
+        return jnlpOutputFile;
 
     }
 
@@ -679,4 +777,109 @@ public class JnlpDownloadServletMojo
 //
 //        return sbuf.toString();
 //    }
+    
+    public void addJNLPinMainJar(File mainJarFile, File jnlpFile)
+			throws IOException {
+
+		String mainJarFileName = mainJarFile.getAbsolutePath();
+		File tempJarFile = new File(mainJarFileName + ".tmp");
+
+		// Open the jar file.
+		JarFile jar = new JarFile(mainJarFile);
+		getLog().info(mainJarFileName + " opened.");
+
+		// Initialize a flag that will indicate that the jar was updated.
+		boolean jarUpdated = false;
+
+		try {
+			// Create a temp jar file with no manifest. (The manifest will
+			// be copied when the entries are copied.)
+
+			Manifest jarManifest = jar.getManifest();
+			JarOutputStream tempJar = new JarOutputStream(new FileOutputStream(
+					tempJarFile));
+
+			// Allocate a buffer for reading entry data.
+
+			byte[] buffer = new byte[1024];
+			int bytesRead;
+
+			try {
+				// Open the given file.
+
+				FileInputStream file = new FileInputStream(jnlpFile);
+
+				try {
+					// Create a jar entry and add it to the temp jar.
+					JarEntry entry = new JarEntry(JNLP_FILE_NAME_IN_JAR);
+					tempJar.putNextEntry(entry);
+
+					// Read the file and write it to the jar.
+
+					while ((bytesRead = file.read(buffer)) != -1) {
+						tempJar.write(buffer, 0, bytesRead);
+					}
+
+					getLog().info(entry.getName() + " added.");
+				} finally {
+					file.close();
+				}
+
+				// Loop through the jar entries and add them to the temp jar,
+				// skipping the entry that was added to the temp jar already.
+
+				for (Enumeration entries = jar.entries(); entries
+						.hasMoreElements();) {
+					// Get the next entry.
+
+					JarEntry entry = (JarEntry) entries.nextElement();
+
+					// If the entry has not been added already, add it.
+
+					if (!entry.getName().equals(JNLP_FILE_NAME_IN_JAR)) {
+						// Get an input stream for the entry.
+
+						InputStream entryStream = jar.getInputStream(entry);
+
+						// Read the entry and write it to the temp jar.
+
+						tempJar.putNextEntry(entry);
+
+						while ((bytesRead = entryStream.read(buffer)) != -1) {
+							tempJar.write(buffer, 0, bytesRead);
+						}
+					}
+				}
+
+				jarUpdated = true;
+			} catch (Exception ex) {
+				getLog().info(ex);
+
+				// Add a stub entry here, so that the jar will close without an
+				// exception.
+
+				tempJar.putNextEntry(new JarEntry("stub"));
+			} finally {
+				tempJar.close();
+			}
+		} finally {
+			jar.close();
+			getLog().info(mainJarFileName + " closed.");
+
+			// If the jar was not updated, delete the temp jar file.
+
+			if (!jarUpdated) {
+				tempJarFile.delete();
+			}
+		}
+
+		// If the jar was updated, delete the original jar file and rename the
+		// temp jar file to the original name.
+
+		if (jarUpdated) {
+			mainJarFile.delete();
+			tempJarFile.renameTo(mainJarFile);
+			getLog().info(mainJarFileName + " updated.");
+		}
+    }
 }

@@ -1,5 +1,22 @@
 package org.codehaus.mojo.webstart;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -37,15 +54,6 @@ import org.codehaus.mojo.webstart.generator.GeneratorConfig;
 import org.codehaus.mojo.webstart.generator.GeneratorTechnicalConfig;
 import org.codehaus.mojo.webstart.util.IOUtil;
 
-import java.io.File;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
  * @author <a href="jerome@coffeebreaks.org">Jerome Lacoste</a>
  * @version $Id$
@@ -59,6 +67,10 @@ public abstract class AbstractJnlpMojo
     // Constants
     // ----------------------------------------------------------------------
 
+	private static final String DEFAULT_TEMPLATE_LOCATION = "src/main/jnlp/template.vm";
+	    
+	private static String JNLP_FILE_NAME_IN_JAR = "JNLP-INF/APPLICATION.JNLP";
+	    
     /**
      * Name of the built in jnlp template to use if none given.
      */
@@ -277,6 +289,23 @@ public abstract class AbstractJnlpMojo
                 logCollection(
                     "Some dependencies may be skipped. Here's the list of the artifacts that should be signed/packed: ",
                     getModifiedJnlpArtifacts() );
+            }
+            
+            File jnlpGeneratedFile = generateJnlpFile( getWorkDirectory() );
+            if(jnlp.isSignJnlp()){
+            	File[] libFiles = getLibDirectory().listFiles();
+            	File mainJarFile = null;
+            	for(int i=0; i<libFiles.length; i++){
+            		File lib = libFiles[i];
+            		if(lib.getName().equals("unprocessed_"+ artifactWithMainClass.getFile().getName())){
+            			mainJarFile = lib;
+            			getLog().info("Find mainJarFile in " + lib.getAbsoluteFile());
+            			break;
+            		}
+            	}
+            	if(mainJarFile != null){
+            		addJNLPinMainJar(mainJarFile, jnlpGeneratedFile);
+            	}
             }
 
             // ---
@@ -573,7 +602,7 @@ public abstract class AbstractJnlpMojo
         }
     }
 
-    private void generateJnlpFile( File outputDirectory )
+    private File generateJnlpFile( File outputDirectory )
         throws MojoExecutionException
     {
         // ---
@@ -658,6 +687,8 @@ public abstract class AbstractJnlpMojo
             getLog().debug( e.toString() );
             throw new MojoExecutionException( "Could not generate the JNLP deployment descriptor", e );
         }
+        
+        return jnlpOutputFile;
     }
 
     private void processNativeLibs()
@@ -1013,6 +1044,112 @@ public abstract class AbstractJnlpMojo
             throw new MojoExecutionException( "Could not generate the JNLP deployment descriptor", e );
         }
     }
+    
+    public void addJNLPinMainJar(File mainJarFile, File jnlpFile) throws Exception {
+
+    	String mainJarFileName = mainJarFile.getAbsolutePath();
+		File tempJarFile = new File(mainJarFileName + ".tmp");
+
+		// Open the jar file.
+		JarFile jar = new JarFile(mainJarFile);
+		getLog().info(mainJarFileName + " opened.");
+
+		// Initialize a flag that will indicate that the jar was updated.
+		boolean jarUpdated = false;
+
+		try {
+			// Create a temp jar file with no manifest. (The manifest will
+			// be copied when the entries are copied.)
+
+			Manifest jarManifest = jar.getManifest();
+			JarOutputStream tempJar = new JarOutputStream(new FileOutputStream(tempJarFile));
+
+			// Allocate a buffer for reading entry data.
+
+			byte[] buffer = new byte[1024];
+			int bytesRead;
+
+			try {
+				// Open the given file.
+
+				FileInputStream file = new FileInputStream(jnlpFile);
+
+				try {
+					// Create a jar entry and add it to the temp jar.
+					JarEntry entry = new JarEntry(JNLP_FILE_NAME_IN_JAR);
+					tempJar.putNextEntry(entry);
+
+					// Read the file and write it to the jar.
+
+					while ((bytesRead = file.read(buffer)) != -1) {
+						tempJar.write(buffer, 0, bytesRead);
+					}
+
+					getLog().info(entry.getName() + " added.");
+				}
+				finally {
+					file.close();
+				}
+
+				// Loop through the jar entries and add them to the temp jar,
+				// skipping the entry that was added to the temp jar already.
+
+				for (Enumeration entries = jar.entries(); entries.hasMoreElements(); ) {
+					// Get the next entry.
+
+					JarEntry entry = (JarEntry) entries.nextElement();
+
+					// If the entry has not been added already, add it.
+
+					if (! entry.getName().equals(JNLP_FILE_NAME_IN_JAR)) {
+						// Get an input stream for the entry.
+
+						InputStream entryStream = jar.getInputStream(entry);
+
+						// Read the entry and write it to the temp jar.
+
+						tempJar.putNextEntry(entry);
+
+						while ((bytesRead = entryStream.read(buffer)) != -1) {
+							tempJar.write(buffer, 0, bytesRead);
+						}
+					}
+				}
+
+				jarUpdated = true;
+			}
+			catch (Exception ex) {
+				getLog().info(ex);
+
+				// Add a stub entry here, so that the jar will close without an
+				// exception.
+
+				tempJar.putNextEntry(new JarEntry("stub"));
+			}
+			finally {
+				tempJar.close();
+			}
+		}
+		finally {
+			jar.close();
+			getLog().info(mainJarFileName + " closed.");
+
+			// If the jar was not updated, delete the temp jar file.
+
+			if (! jarUpdated) {
+				tempJarFile.delete();
+			}
+		}
+
+		// If the jar was updated, delete the original jar file and rename the
+		// temp jar file to the original name.
+
+		if (jarUpdated) {
+			mainJarFile.delete();
+			tempJarFile.renameTo(mainJarFile);
+			getLog().info(mainJarFileName + " updated.");
+		}
+	}
 
 }
 

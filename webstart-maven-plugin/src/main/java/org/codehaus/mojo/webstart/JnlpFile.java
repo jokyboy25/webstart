@@ -47,6 +47,8 @@ public class JnlpFile
     private String mainClass;
 
     private Map<String, String> properties;
+    
+    private boolean signJnlp = false;
 
     /**
      * Creates a new uninitialized {@code JnlpFile}.
@@ -170,5 +172,11 @@ public class JnlpFile
         this.properties = properties;
     }
 
+    protected boolean isSignJnlp() {
+  		return signJnlp;
+  	}
 
+      protected void setSignJnlp(boolean signJnlp) {
+  		this.signJnlp = signJnlp;
+  	}
 }

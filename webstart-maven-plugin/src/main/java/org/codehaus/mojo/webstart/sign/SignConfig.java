@@ -1,5 +1,7 @@
 package org.codehaus.mojo.webstart.sign;
 
+import java.io.File;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -24,8 +26,6 @@ import org.apache.maven.shared.jarsigner.JarSignerRequest;
 import org.apache.maven.shared.jarsigner.JarSignerSignRequest;
 import org.apache.maven.shared.jarsigner.JarSignerVerifyRequest;
 import org.codehaus.mojo.keytool.requests.KeyToolGenerateKeyPairRequest;
-
-import java.io.File;
 
 /**
  * Bean that represents the JarSigner configuration.
@@ -135,6 +135,11 @@ public class SignConfig
      * @since 1.0-beta-5
      */
     private String tsaLocation;
+    
+	/**
+	 * Thread count for jar signing
+	 */
+	private String threads;
 
     /**
      * Called before any Jars get signed or verified.
@@ -505,5 +510,18 @@ public class SignConfig
             buffer.append( property.replaceAll( ",", "\\\\," ) );
         }
     }
+    
+    public int getThreads() {
+		if (threads == null) {
+			return Runtime.getRuntime().availableProcessors();
+		}
+		return Integer.parseInt(threads);
+	}
+
+
+
+	public void setThreads( String threads ) {
+		this.threads = threads;
+	}
 
 }

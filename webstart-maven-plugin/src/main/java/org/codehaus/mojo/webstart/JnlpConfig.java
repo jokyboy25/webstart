@@ -50,6 +50,8 @@ public class JnlpConfig
     private String href;
 
     private String mainClass;
+    
+    private boolean signJnlp = false;
 
     private Map<String,String> properties;
 
@@ -200,4 +202,12 @@ public class JnlpConfig
     {
         return type.isRequireMainClass();
     }
+    
+    public boolean isSignJnlp() {
+		return signJnlp;
+	}
+
+	public void setSignJnlp(boolean signJnlp) {
+		this.signJnlp = signJnlp;
+	}
 }

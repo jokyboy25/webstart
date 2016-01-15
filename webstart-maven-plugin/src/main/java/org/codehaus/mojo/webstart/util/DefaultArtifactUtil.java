@@ -1,5 +1,12 @@
 package org.codehaus.mojo.webstart.util;
 
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -35,13 +42,6 @@ import org.codehaus.mojo.webstart.JarResource;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.AbstractLogEnabled;
-
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Default implementation of {@link ArtifactUtil}.
@@ -87,6 +87,22 @@ public class DefaultArtifactUtil
         {
             return artifactFactory.createArtifactWithClassifier( jarResource.getGroupId(), jarResource.getArtifactId(),
                                                                  jarResource.getVersion(), "jar",
+                                                                 jarResource.getClassifier() );
+        }
+    }
+    
+    public Artifact createArtifactPom( JarResource jarResource )
+    {
+
+        if ( jarResource.getClassifier() == null )
+        {
+            return artifactFactory.createProjectArtifact(jarResource.getGroupId(), jarResource.getArtifactId(),
+                                                   jarResource.getVersion());
+        }
+        else
+        {
+            return artifactFactory.createArtifactWithClassifier( jarResource.getGroupId(), jarResource.getArtifactId(),
+                                                                 jarResource.getVersion(), "pom",
                                                                  jarResource.getClassifier() );
         }
     }

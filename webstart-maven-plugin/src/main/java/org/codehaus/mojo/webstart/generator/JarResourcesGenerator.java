@@ -1,5 +1,7 @@
 package org.codehaus.mojo.webstart.generator;
 
+import java.util.Collection;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -20,10 +22,9 @@ package org.codehaus.mojo.webstart.generator;
  */
 
 import org.apache.maven.plugin.logging.Log;
+import org.apache.velocity.VelocityContext;
 import org.codehaus.mojo.webstart.ResolvedJarResource;
 import org.codehaus.plexus.util.StringUtils;
-
-import java.util.Collection;
 
 /**
  * Generates a JNLP deployment descriptor.
@@ -45,7 +46,8 @@ public class JarResourcesGenerator
     /**
      * {@inheritDoc}
      */
-    protected String getDependenciesText()
+    @Override
+	protected String getDependenciesText()
     {
 
         String jarResourcesText = "";
@@ -93,4 +95,16 @@ public class JarResourcesGenerator
         return jarResourcesText;
     }
 
+    @Override
+	protected VelocityContext createAndPopulateContext()
+    {
+        VelocityContext context = super.createAndPopulateContext();
+    
+        if ( getExtraConfig().isSigning() )
+        {
+            context.put( "signing", Boolean.TRUE );
+        }
+    
+        return context;
+    }
 }

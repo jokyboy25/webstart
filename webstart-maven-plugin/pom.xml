@@ -5,11 +5,11 @@
   <parent>
     <groupId>org.codehaus.mojo</groupId>
     <artifactId>webstart</artifactId>
-    <version>1.0-beta-7-SNAPSHOT</version>
+    <version>1.0-beta-7-rp-2</version>
   </parent>
 
   <artifactId>webstart-maven-plugin</artifactId>
-  <version>1.0-beta-7-SNAPSHOT</version>
+  <version>1.0-beta-7-rp-2</version>
   <packaging>maven-plugin</packaging>
 
   <name>MWEBSTART :: Webstart Maven Plugin</name>
@@ -70,6 +70,11 @@
     <dependency>
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-settings</artifactId>
+    </dependency>
+    
+     <dependency>
+      <groupId>org.apache.maven.shared</groupId>
+      <artifactId>maven-dependency-tree</artifactId>
     </dependency>
 
     <dependency>
@@ -287,9 +292,9 @@
           <value>!true</value>
         </property>
       </activation>
-      <build>
+     <!-- <build>
         <defaultGoal>verify</defaultGoal>
-        <plugins>
+         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-invoker-plugin</artifactId>
@@ -310,7 +315,7 @@
             </executions>
           </plugin>
         </plugins>
-      </build>
+      </build>--> 
     </profile>
 
     <profile>

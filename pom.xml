@@ -9,7 +9,7 @@
   </parent>
 
   <artifactId>webstart</artifactId>
-  <version>1.0-beta-7-SNAPSHOT</version>
+  <version>1.0-beta-7-rp-2</version>
   <packaging>pom</packaging>
 
   <name>MWEBSTART :: Project</name>
@@ -185,7 +185,7 @@
           </exclusion>
         </exclusions>
       </dependency>
-
+      
       <dependency>
         <groupId>org.apache.maven.reporting</groupId>
         <artifactId>maven-reporting-api</artifactId>
@@ -208,6 +208,13 @@
           </exclusion>
         </exclusions>
       </dependency>
+
+      <dependency>
+      <groupId>org.apache.maven.shared</groupId>
+      <artifactId>maven-dependency-tree</artifactId>
+      <version>2.2</version>
+    </dependency>
+
 
       <dependency>
         <groupId>org.apache.maven.shared</groupId>
@@ -344,7 +351,7 @@
             </execution>
           </executions>
         </plugin>
-        <plugin>
+        <!-- <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>animal-sniffer-maven-plugin</artifactId>
           <version>1.8</version>
@@ -360,7 +367,7 @@
           <groupId>org.codehaus.plexus</groupId>
           <artifactId>plexus-component-metadata</artifactId>
           <version>1.5.5</version>
-        </plugin>
+        </plugin> -->
         <!-- TODO Move this to mojo-parent ? -->
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -383,7 +390,7 @@
         </plugin>
       </plugins>
     </pluginManagement>
-    <plugins>
+  <!--  <plugins>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>animal-sniffer-maven-plugin</artifactId>
@@ -402,6 +409,6 @@
           </execution>
         </executions>
       </plugin>
-    </plugins>
+    </plugins> --> 
   </build>
 </project>
