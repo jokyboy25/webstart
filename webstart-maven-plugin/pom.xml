@@ -5,11 +5,10 @@
   <parent>
     <groupId>org.codehaus.mojo</groupId>
     <artifactId>webstart</artifactId>
-    <version>1.0-beta-7-SNAPSHOT</version>
+    <version>1.0-beta-8-SNAPSHOT</version>
   </parent>
 
   <artifactId>webstart-maven-plugin</artifactId>
-  <version>1.0-beta-7-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
 
   <name>MWEBSTART :: Webstart Maven Plugin</name>
@@ -95,6 +94,11 @@
     <dependency>
       <groupId>org.apache.maven.shared</groupId>
       <artifactId>maven-shared-utils</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.sonatype.plexus</groupId>
+      <artifactId>plexus-sec-dispatcher</artifactId>
     </dependency>
 
     <dependency>

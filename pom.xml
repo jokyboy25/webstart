@@ -5,11 +5,11 @@
   <parent>
     <artifactId>mojo-parent</artifactId>
     <groupId>org.codehaus.mojo</groupId>
-    <version>32</version>
+    <version>38</version>
   </parent>
 
   <artifactId>webstart</artifactId>
-  <version>1.0-beta-7-SNAPSHOT</version>
+  <version>1.0-beta-8-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>MWEBSTART :: Project</name>
@@ -87,9 +87,10 @@
   </modules>
 
   <scm>
-    <connection>scm:git:git@github.com:mojohaus/webstart.git</connection>
-    <developerConnection>scm:git:git@github.com:mojohaus/webstart.git</developerConnection>
+    <connection>scm:git:https://github.com/mojohaus/webstart.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/mojohaus/webstart.git</developerConnection>
     <url>https://github.com/mojohaus/webstart</url>
+    <tag>HEAD</tag>
   </scm>
   <issueManagement>
     <system>github</system>
@@ -109,7 +110,7 @@
   <properties>
     <mavenVersion>2.0.11</mavenVersion>
     <mavenPluginPluginVersion>3.2</mavenPluginPluginVersion>
-    <keytoolVersion>1.4</keytoolVersion>
+    <keytoolVersion>1.5</keytoolVersion>
 
     <!-- release plugin configuration -->
 
@@ -213,6 +214,13 @@
         <groupId>org.apache.maven.shared</groupId>
         <artifactId>maven-shared-utils</artifactId>
         <version>0.5</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.sonatype.plexus</groupId>
+        <artifactId>plexus-sec-dispatcher</artifactId>
+        <version>1.4</version>
+        <scope>compile</scope>
       </dependency>
 
       <dependency>
@@ -394,11 +402,11 @@
             </goals>
             <configuration>
               <signature>
-              <groupId>org.codehaus.mojo.signature</groupId>
-              <artifactId>java15</artifactId>
-              <version>1.0</version>
-            </signature>
-          </configuration>
+                <groupId>org.codehaus.mojo.signature</groupId>
+                <artifactId>java15</artifactId>
+                <version>1.0</version>
+              </signature>
+            </configuration>
           </execution>
         </executions>
       </plugin>
