@@ -68,15 +68,15 @@ public class SimpleDependencyFilenameStrategy
             {
                 filename += "-";
             }
-            
-            if ( useUniqueVersions != null && useUniqueVersions ) 
-            {
-            	filename += artifact.getBaseVersion();
-            }
-            else 
-            {
-            	filename += artifact.getVersion();
-            }
+            filename += artifact.getBaseVersion();
+//            if ( useUniqueVersions != null && useUniqueVersions ) 
+//            {
+//            	filename += artifact.getBaseVersion();
+//            }
+//            else 
+//            {
+//            	filename += artifact.getVersion();
+//            }
         }
         return filename;
     }

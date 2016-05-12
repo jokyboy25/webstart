@@ -86,9 +86,10 @@ public class ResolvedJarResource
         return artifact.getGroupId();
     }
 
+    
     public String getVersion()
     {
-        return artifact.getVersion();
+        return artifact.getBaseVersion();
     }
 
     public String getMainClass()
@@ -220,7 +221,8 @@ public class ResolvedJarResource
     /**
      * {@inheritDoc}
      */
-    public int hashCode()
+    @Override
+	public int hashCode()
     {
         final int offset = 17;
         final int multiplier = 37;

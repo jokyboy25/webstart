@@ -65,14 +65,14 @@ public class FullDependencyFilenameStrategy
             {
                 filename += "-";
             }
-            
-            if (useUniqueVersions != null && useUniqueVersions.booleanValue()) 
-            {
-            	filename += artifact.getBaseVersion();
-            }
-            else {
-            	filename += artifact.getVersion();
-            }
+            filename += artifact.getBaseVersion();
+//            if (useUniqueVersions != null && useUniqueVersions.booleanValue()) 
+//            {
+//            	filename += artifact.getBaseVersion();
+//            }
+//            else {
+//            	filename += artifact.getVersion();
+//            }
         }
         return filename;
     }
