@@ -1,6 +1,7 @@
 package org.codehaus.mojo.webstart.generator;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 /*
@@ -24,6 +25,7 @@ import java.util.Map;
 
 import org.codehaus.mojo.webstart.ResolvedJarResource;
 
+
 /**
  * Created on 1/6/14.
  *
@@ -44,14 +46,17 @@ public class JarResourceGeneratorConfig
 
     private final Map<String, String> properties;
 
+    private List<String> arguments;
+
     public JarResourceGeneratorConfig( Collection<ResolvedJarResource> jarResources, String libPath, String codebase,
-                                       Map<String, String> properties, boolean signing)
+                                       Map<String, String> properties, List<String> arguments , boolean signing)
     {
         this.jarResources = jarResources;
         this.libPath = libPath;
         this.codebase = codebase;
         this.properties = properties;
         this.signing = signing;
+        this.arguments = arguments;
     }
 
     public Collection<ResolvedJarResource> getJarResources()
@@ -115,4 +120,9 @@ public class JarResourceGeneratorConfig
     public boolean isSigning() {
 		return signing;
 	}
+
+    public List<String> getArguments()
+    {
+        return arguments;
+    }
 }

@@ -1,6 +1,9 @@
 package org.codehaus.mojo.webstart.sign;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -26,6 +29,8 @@ import org.apache.maven.shared.jarsigner.JarSignerRequest;
 import org.apache.maven.shared.jarsigner.JarSignerSignRequest;
 import org.apache.maven.shared.jarsigner.JarSignerVerifyRequest;
 import org.codehaus.mojo.keytool.requests.KeyToolGenerateKeyPairRequest;
+import org.sonatype.plexus.components.sec.dispatcher.SecDispatcher;
+import org.sonatype.plexus.components.sec.dispatcher.SecDispatcherException;
 
 /**
  * Bean that represents the JarSigner configuration.
@@ -142,21 +147,67 @@ public class SignConfig
 	private String threads;
 
     /**
+     * @since 1.0-beta-7
+     */
+    private SecDispatcher securityDispatcher;
+
+    /**
+     * Provides custom arguements to pass to the signtool.
+     */
+    private List<String> arguments;
+
+
+    /**
+     * Optional host name of the HTTP proxy host used for accessing the
+     * {@link #tsaLocation trusted timestamping server}.
+     *
+     * @since 1.0-beta-7
+     */
+    private String httpProxyHost;
+
+    /**
+     * Optional port of the HTTP proxy host used for accessing the
+     * {@link #tsaLocation trusted timestamping server}.
+     *
+     * @since 1.0-beta-7
+     */
+    private String httpProxyPort;
+
+    /**
+     * Optional host name of the HTTPS proxy host used for accessing the
+     * {@link #tsaLocation trusted timestamping server}.
+     *
+     * @since 1.0-beta-7
+     */
+    private String httpsProxyHost;
+
+    /**
+     * Optional port of the HTTPS proxy host used for accessing the
+     * {@link #tsaLocation trusted timestamping server}.
+     *
+     * @since 1.0-beta-7
+     */
+    private String httpsProxyPort;
+
+    /**
      * Called before any Jars get signed or verified.
      * <p/>
      * This method allows you to create any keys or perform any initialisation that the
      * method of signature that you're implementing requires.
      *
-     * @param workDirectory working directory
-     * @param verbose       verbose flag coming from the mojo configuration
-     * @param signTool      the sign tool used eventually to create or delete key store
-     * @param classLoader   classloader where to find keystore (if not generating a new one)
+     * @param workDirectory      working directory
+     * @param verbose            verbose flag coming from the mojo configuration
+     * @param signTool           the sign tool used eventually to create or delete key store
+     * @param securityDispatcher component to decrypt a string, passed to it
+     * @param classLoader        classloader where to find keystore (if not generating a new one)
      * @throws MojoExecutionException if something wrong occurs while init (mainly when preparing keys)
      */
-    public void init( File workDirectory, boolean verbose, SignTool signTool, ClassLoader classLoader )
+    public void init( File workDirectory, boolean verbose, SignTool signTool, SecDispatcher securityDispatcher,
+                      ClassLoader classLoader )
         throws MojoExecutionException
     {
         this.workDirectory = workDirectory;
+        this.securityDispatcher = securityDispatcher;
         setVerbose( verbose );
 
         if ( workingKeystore == null )
@@ -192,6 +243,9 @@ public class SignConfig
         {
             throw new MojoExecutionException( "Could not obtain key store location at " + keystore );
         }
+
+        // reset arguments
+        arguments = new ArrayList<String>();
     }
 
 
@@ -201,15 +255,15 @@ public class SignConfig
      * @param jarToSign the location of the jar to sign
      * @param signedJar the optional location of the signed jar to produce (if not set, will use the original location)
      * @return the jarsigner request
+     * @throws MojoExecutionException if something wrong occurs
      */
     public JarSignerRequest createSignRequest( File jarToSign, File signedJar )
+        throws MojoExecutionException
     {
         JarSignerSignRequest request = new JarSignerSignRequest();
         request.setAlias( getAlias() );
-        request.setKeypass( getKeypass() );
         request.setKeystore( getKeystore() );
         request.setSigfile( getSigfile() );
-        request.setStorepass( getStorepass() );
         request.setStoretype( getStoretype() );
         request.setWorkingDirectory( workDirectory );
         request.setMaxMemory( getMaxMemory() );
@@ -217,6 +271,38 @@ public class SignConfig
         request.setArchive( jarToSign );
         request.setSignedjar( signedJar );
         request.setTsaLocation( getTsaLocation() );
+
+        // Special handling for passwords through the Maven Security Dispatcher
+        request.setKeypass( decrypt( keypass ) );
+        request.setStorepass( decrypt( storepass ) );
+
+        // TODO: add support for proxy parameters to JarSigner / JarSignerSignRequest
+        // instead of using implementation-specific additional arguments
+        if ( httpProxyHost != null )
+        {
+            arguments.add( "-J-Dhttp.proxyHost=" + httpProxyHost );
+        }
+
+        if ( httpProxyPort != null )
+        {
+            arguments.add( "-J-Dhttp.proxyPort=" + httpProxyPort );
+        }
+
+        if ( httpsProxyHost != null )
+        {
+            arguments.add( "-J-Dhttps.proxyHost=" + httpsProxyHost );
+        }
+
+        if ( httpsProxyPort != null )
+        {
+            arguments.add( "-J-Dhttps.proxyPort=" + httpsProxyPort );
+        }
+
+        if ( !arguments.isEmpty() )
+        {
+            request.setArguments( arguments.toArray( new String[arguments.size()] ) );
+        }
+
         return request;
     }
 
@@ -224,7 +310,7 @@ public class SignConfig
      * Creates a jarsigner request to do a verify operation.
      *
      * @param jarFile the location of the jar to sign
-     * @param certs   flag to show certificats details
+     * @param certs   flag to show certificates details
      * @return the jarsigner request
      */
     public JarSignerRequest createVerifyRequest( File jarFile, boolean certs )
@@ -388,6 +474,11 @@ public class SignConfig
         this.tsaLocation = tsaLocation;
     }
 
+    public void setArguments( String[] arguments )
+    {
+        Collections.addAll( this.arguments, arguments );
+    }
+
     public String getKeystore()
     {
         return keystore;
@@ -483,6 +574,51 @@ public class SignConfig
         return maxMemory;
     }
 
+    public String[] getArguments()
+    {
+        return arguments.toArray( new String[arguments.size()] );
+    }
+
+    public String getHttpProxyHost()
+    {
+        return httpProxyHost;
+    }
+
+    public void setHttpProxyHost( String httpProxyHost )
+    {
+        this.httpProxyHost = httpProxyHost;
+    }
+
+    public String getHttpProxyPort()
+    {
+        return httpProxyPort;
+    }
+
+    public void setHttpProxyPort( String httpProxyPort )
+    {
+        this.httpProxyPort = httpProxyPort;
+    }
+
+    public String getHttpsProxyHost()
+    {
+        return httpsProxyHost;
+    }
+
+    public void setHttpsProxyHost( String httpsProxyHost )
+    {
+        this.httpsProxyHost = httpsProxyHost;
+    }
+
+    public String getHttpsProxyPort()
+    {
+        return httpsProxyPort;
+    }
+
+    public void setHttpsProxyPort( String httpsProxyPort )
+    {
+        this.httpsProxyPort = httpsProxyPort;
+    }
+
     public String getDname()
     {
         StringBuffer buffer = new StringBuffer( 128 );
@@ -524,4 +660,16 @@ public class SignConfig
 		this.threads = threads;
 	}
 
+    private String decrypt( String encoded )
+        throws MojoExecutionException
+    {
+        try
+        {
+            return securityDispatcher.decrypt( encoded );
+        }
+        catch ( SecDispatcherException e )
+        {
+            throw new MojoExecutionException( "error using security dispatcher: " + e.getMessage(), e );
+        }
+    }
 }

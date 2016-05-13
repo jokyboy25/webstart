@@ -46,6 +46,7 @@ import org.codehaus.mojo.webstart.sign.SignTool;
 import org.codehaus.mojo.webstart.util.ArtifactUtil;
 import org.codehaus.mojo.webstart.util.IOUtil;
 import org.codehaus.mojo.webstart.util.JarUtil;
+import org.sonatype.plexus.components.sec.dispatcher.SecDispatcher;
 
 /**
  * The superclass for all JNLP generating MOJOs.
@@ -193,7 +194,7 @@ public abstract class AbstractBaseJnlpMojo
      * <p/>
      * <strong>Note:</strong> Won't affect any already signed jar resources if you configuration does not authorize it.
      * <p/>
-     * Si parameters {@link #unsignAlreadySignedJars} and {@link #canUnsign}.
+     * See parameters {@link #unsignAlreadySignedJars} and {@link #canUnsign}.
      *
      * @since 1.0-beta-4
      */
@@ -292,6 +293,12 @@ public abstract class AbstractBaseJnlpMojo
     
     @Component
     private JarSigner concurrentJarSigner;
+
+    /**
+     * @since 1.0-beta-7
+     */
+    @Component(hint = "mng-4384")
+    private SecDispatcher securityDispatcher;
 
     // ----------------------------------------------------------------------
     // Fields
@@ -662,7 +669,7 @@ public abstract class AbstractBaseJnlpMojo
             try
             {
                 ClassLoader loader = getCompileClassLoader();
-                sign.init( getWorkDirectory(), getLog().isDebugEnabled(), signTool, loader );
+                sign.init( getWorkDirectory(), getLog().isDebugEnabled(), signTool, securityDispatcher, loader );
             }
             catch ( MalformedURLException e )
             {

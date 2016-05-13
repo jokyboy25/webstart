@@ -49,11 +49,6 @@ public class FullDependencyFilenameStrategy
     {
         String filename = artifact.getGroupId() + "-" + artifact.getArtifactId();
 
-        if ( StringUtils.isNotEmpty( artifact.getClassifier() ) )
-        {
-            filename += "-" + artifact.getClassifier();
-        }
-
         if ( outputJarVersion != null )
         {
 
@@ -65,14 +60,19 @@ public class FullDependencyFilenameStrategy
             {
                 filename += "-";
             }
-            
-            if (useUniqueVersions != null && useUniqueVersions.booleanValue()) 
-            {
-            	filename += artifact.getBaseVersion();
-            }
-            else {
-            	filename += artifact.getVersion();
-            }
+            filename += artifact.getBaseVersion();
+//            if (useUniqueVersions != null && useUniqueVersions.booleanValue()) 
+//            {
+//            	filename += artifact.getBaseVersion();
+//            }
+//            else {
+//            	filename += artifact.getVersion();
+//            }
+        }
+
+        if ( StringUtils.isNotEmpty( artifact.getClassifier() ) )
+        {
+            filename += "-" + artifact.getClassifier();
         }
         return filename;
     }

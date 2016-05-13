@@ -721,7 +721,9 @@ File jnlpGeneratedFile = generateJnlpFile( resolvedJnlpFile, getLibPath(), false
             new GeneratorTechnicalConfig( getProject(), templateDirectory, BUILT_IN_SERVLET_TEMPLATE_FILENAME,
                                           jnlpOutputFile, templateFileName, jnlpFile.getMainClass(),
                                           getWebstartJarURLForVelocity(), getEncoding() );
-        JarResourceGeneratorConfig jarResourceGeneratorConfig = new JarResourceGeneratorConfig( jarResources, libPath, getCodebase(), jnlpFile.getProperties(), signing );
+
+        JarResourceGeneratorConfig jarResourceGeneratorConfig = new JarResourceGeneratorConfig( jarResources, libPath, getCodebase(), jnlpFile.getProperties(), jnlpFile.getArguments(), signing );
+
         JarResourcesGenerator jnlpGenerator =
             new JarResourcesGenerator( getLog(), generatorTechnicalConfig, jarResourceGeneratorConfig );
 

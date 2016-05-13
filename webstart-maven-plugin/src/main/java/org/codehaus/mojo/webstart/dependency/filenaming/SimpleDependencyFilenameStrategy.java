@@ -52,11 +52,6 @@ public class SimpleDependencyFilenameStrategy
     {
         String filename = artifact.getArtifactId();
 
-        if ( StringUtils.isNotEmpty( artifact.getClassifier() ) )
-        {
-            filename += "-" + artifact.getClassifier();
-        }
-
         if ( outputJarVersion != null )
         {
 
@@ -68,16 +63,22 @@ public class SimpleDependencyFilenameStrategy
             {
                 filename += "-";
             }
-            
-            if ( useUniqueVersions != null && useUniqueVersions ) 
-            {
-            	filename += artifact.getBaseVersion();
-            }
-            else 
-            {
-            	filename += artifact.getVersion();
-            }
+            filename += artifact.getBaseVersion();
+//            if ( useUniqueVersions != null && useUniqueVersions ) 
+//            {
+//            	filename += artifact.getBaseVersion();
+//            }
+//            else 
+//            {
+//            	filename += artifact.getVersion();
+//            }
         }
+
+        if ( StringUtils.isNotEmpty( artifact.getClassifier() ) )
+        {
+            filename += "-" + artifact.getClassifier();
+        }
+
         return filename;
     }
 }
