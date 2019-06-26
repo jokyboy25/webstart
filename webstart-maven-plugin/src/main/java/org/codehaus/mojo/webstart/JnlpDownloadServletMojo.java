@@ -129,6 +129,12 @@ public class JnlpDownloadServletMojo
     private List<JarResource> commonJarResources;
 
     /**
+     * The directory in which files will be stored prior to processing.
+     */
+    @Parameter( property = "jnlp.warDirectory", defaultValue = "${project.build.directory}/${project.build.finalName}", required = true )
+    private File warDirectory;
+
+    /**
      */
     @Parameter( defaultValue = "${reactorProjects}", required = true, readonly = true )
     private List<MavenProject> reactorProjects;
@@ -268,10 +274,7 @@ File jnlpGeneratedFile = generateJnlpFile( resolvedJnlpFile, getLibPath(), false
         // ---
         // Copy to final directory
         // ---
-
-        //FIXME Should be able to configure this
-        File outputDir = new File( getProject().getBuild().getDirectory(),
-                                   getProject().getBuild().getFinalName() + File.separator + outputDirectoryName );
+        File outputDir = new File( warDirectory,  outputDirectoryName );
 
         ioUtil.copyDirectoryStructure( getWorkDirectory(), outputDir );
     }

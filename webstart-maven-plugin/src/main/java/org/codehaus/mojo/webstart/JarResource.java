@@ -44,7 +44,7 @@ public class JarResource
 
     private String mainClass;
 
-    private boolean outputJarVersion = true;
+    private boolean outputJarVersion = false;
 
     private boolean includeInJnlp = true;
 
